@@ -1,12 +1,9 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home1/de2shrnx/personalfin.easi7.in/
-    - /bin/cp -R autoload.php helpers.php index.php $DEPLOYPATH
-    - /bin/cp -R .htaccess 404.html $DEPLOYPATH
-    - /bin/cp -R controllers/ $DEPLOYPATH
-    - /bin/cp -R models/ $DEPLOYPATH
-    - /bin/cp -R views/ $DEPLOYPATH
-    - /bin/cp -R public/ $DEPLOYPATH
-    - /bin/cp -R api/ $DEPLOYPATH
-    - /bin/cp config/pin.php $DEPLOYPATH/config/
+    - export DEPLOYPATH=/home1/de2shrnx/fin.easi7.in
+    - /bin/cp -r . $DEPLOYPATH
+    - /bin/find $DEPLOYPATH -name ".git" -type d -exec /bin/rm -rf {} + 2>/dev/null || true
+    - /bin/find $DEPLOYPATH -name ".env.example" -delete 2>/dev/null || true
+    - /bin/find $DEPLOYPATH -name "finapp_setup.sql" -delete 2>/dev/null || true
+    - /bin/find $DEPLOYPATH -name "migrations" -type d -exec /bin/rm -rf {} + 2>/dev/null || true
