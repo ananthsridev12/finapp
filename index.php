@@ -12,6 +12,11 @@ if (file_exists($envFile)) {
 
 require_once __DIR__ . '/autoload.php';
 
+use Config\Database;
+use Config\SessionHandler;
+
+$sessionHandler = new SessionHandler(new Database());
+session_set_save_handler($sessionHandler, true);
 session_start();
 
 use Controllers\AuthController;
