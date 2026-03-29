@@ -16,9 +16,12 @@ SELECT
     cc.points_balance,
     cc.account_id
 FROM credit_cards cc
+JOIN accounts a ON a.id = cc.account_id
+WHERE a.user_id = :user_id
 ORDER BY cc.created_at DESC
 SQL;
-        $stmt = $this->db->query($sql);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $this->userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -38,8 +41,12 @@ SQL;
             return false;
         }
 
-        $stmt = $this->db->prepare('SELECT points_balance FROM credit_cards WHERE id = :id');
-        $stmt->execute([':id' => $cardId]);
+        $stmt = $this->db->prepare(
+            'SELECT cc.points_balance FROM credit_cards cc
+             JOIN accounts a ON a.id = cc.account_id
+             WHERE cc.id = :id AND a.user_id = :user_id'
+        );
+        $stmt->execute([':id' => $cardId, ':user_id' => $this->userId]);
         $balance = (float) ($stmt->fetchColumn() ?? 0.0);
         if ($points > $balance) {
             return false;
@@ -103,13 +110,15 @@ SQL;
         }
 
         $update = $this->db->prepare(
-            'UPDATE credit_cards
-             SET points_balance = GREATEST(0, points_balance - :points)
-             WHERE id = :id'
+            'UPDATE credit_cards cc
+             JOIN accounts a ON a.id = cc.account_id
+             SET cc.points_balance = GREATEST(0, cc.points_balance - :points)
+             WHERE cc.id = :id AND a.user_id = :user_id'
         );
         return $update->execute([
-            ':points' => (float) $input['points_redeemed'],
-            ':id' => (int) $input['credit_card_id'],
+            ':points'   => (float) $input['points_redeemed'],
+            ':id'       => (int) $input['credit_card_id'],
+            ':user_id'  => $this->userId,
         ]);
     }
 }
