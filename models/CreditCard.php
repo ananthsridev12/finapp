@@ -16,9 +16,11 @@ SELECT
     a.account_name
 FROM credit_cards cc
 LEFT JOIN accounts a ON a.id = cc.account_id
+WHERE a.user_id = :user_id
 ORDER BY cc.created_at DESC
 SQL;
-        $stmt = $this->db->query($sql);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $this->userId]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -30,16 +32,24 @@ SQL;
 
     public function getById(int $id): ?array
     {
-        $stmt = $this->db->prepare('SELECT * FROM credit_cards WHERE id = :id LIMIT 1');
-        $stmt->execute([':id' => $id]);
+        $stmt = $this->db->prepare(
+            'SELECT cc.* FROM credit_cards cc
+             JOIN accounts a ON a.id = cc.account_id
+             WHERE cc.id = :id AND a.user_id = :user_id LIMIT 1'
+        );
+        $stmt->execute([':id' => $id, ':user_id' => $this->userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
 
     public function getByAccountId(int $accountId): ?array
     {
-        $stmt = $this->db->prepare('SELECT * FROM credit_cards WHERE account_id = :account_id LIMIT 1');
-        $stmt->execute([':account_id' => $accountId]);
+        $stmt = $this->db->prepare(
+            'SELECT cc.* FROM credit_cards cc
+             JOIN accounts a ON a.id = cc.account_id
+             WHERE cc.account_id = :account_id AND a.user_id = :user_id LIMIT 1'
+        );
+        $stmt->execute([':account_id' => $accountId, ':user_id' => $this->userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
     }
@@ -62,9 +72,12 @@ SELECT
     c.card_name
 FROM credit_card_emi_plans p
 JOIN credit_cards c ON c.id = p.credit_card_id
+JOIN accounts a ON a.id = c.account_id
+WHERE a.user_id = :user_id
 ORDER BY p.status = 'active' DESC, p.next_due_date ASC, p.created_at DESC
 SQL;
-        $stmt = $this->db->query($sql);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $this->userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -84,11 +97,14 @@ SELECT
 FROM credit_card_emi_schedule s
 JOIN credit_card_emi_plans p ON p.id = s.emi_plan_id
 JOIN credit_cards c ON c.id = p.credit_card_id
+JOIN accounts a ON a.id = c.account_id
 WHERE s.status IN ('pending', 'upcoming')
+  AND a.user_id = :user_id
 ORDER BY s.due_date ASC, s.installment_no ASC
 LIMIT :limit
 SQL;
         $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':user_id', $this->userId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
 
@@ -571,10 +587,11 @@ SQL;
                  FROM transactions t
                  JOIN categories c ON c.id = t.category_id AND c.is_fuel = 1
                  WHERE t.account_id = :account_id
+                   AND t.user_id = :user_id
                    AND t.transaction_type = \'expense\'
                  ORDER BY t.transaction_date DESC'
             );
-            $stmt->execute([':account_id' => $accountId]);
+            $stmt->execute([':account_id' => $accountId, ':user_id' => $this->userId]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             if (empty($rows)) {
@@ -658,8 +675,11 @@ SELECT
         )
     ), 0) AS total_outstanding
 FROM credit_cards cc
+JOIN accounts a ON a.id = cc.account_id
+WHERE a.user_id = :user_id
 SQL;
-        $stmt = $this->db->query($sql);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':user_id' => $this->userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return [
