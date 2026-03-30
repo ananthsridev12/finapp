@@ -112,6 +112,42 @@ include __DIR__ . '/../partials/nav.php';
 /* Table: dash for missing data */
 .dash { color: #7a94c4; }
 
+/* Add transaction button */
+.btn-modal-open {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: var(--radius-sm); padding: 0.55rem 1.1rem;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    white-space: nowrap; transition: opacity 0.15s;
+}
+.btn-modal-open:hover { opacity: 0.85; }
+
+/* Transaction modal */
+.inv-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 1rem;
+}
+.inv-modal-overlay.open { display: flex; }
+.inv-modal {
+    background: #0f1a2e; border: 1px solid rgba(120,150,210,0.25);
+    border-radius: 14px; width: 100%; max-width: 560px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+.inv-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 1.25rem 0.75rem;
+    border-bottom: 1px solid rgba(120,150,210,0.15);
+    font-weight: 700; font-size: 1rem; color: var(--text);
+}
+.inv-modal-close {
+    background: none; border: none; color: var(--muted);
+    font-size: 1.4rem; cursor: pointer; line-height: 1; padding: 0 0.25rem;
+    transition: color 0.15s;
+}
+.inv-modal-close:hover { color: var(--text); }
+.inv-modal .module-form { padding: 1.25rem; }
+
 /* Txn-type badge in table */
 .txn-badge { display:inline-block; font-size:0.65rem; font-weight:700; border-radius:999px; padding:0.15rem 0.55rem; text-transform:uppercase; letter-spacing:0.04em; }
 .txn-badge--buy      { background:rgba(34,197,94,0.15);  color:#86efac; }
@@ -120,9 +156,14 @@ include __DIR__ . '/../partials/nav.php';
 </style>
 
 <main class="module-content">
-    <header class="module-header">
-        <h1>Investments</h1>
-        <p>Track mutual funds, equities, ETFs, FD/RD locks and keep every transaction immutable.</p>
+    <header class="module-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
+        <div>
+            <h1>Investments</h1>
+            <p>Track mutual funds, equities, ETFs, FD/RD locks and keep every transaction immutable.</p>
+        </div>
+        <?php if (!empty($investments)): ?>
+        <button class="btn-modal-open" onclick="openTxnModal()" style="margin-top:0.25rem;">+ Add Transaction</button>
+        <?php endif; ?>
     </header>
 
     <!-- ── Summary cards ───────────────────────────────────── -->
@@ -233,16 +274,13 @@ include __DIR__ . '/../partials/nav.php';
         </div>
     </section>
 
-    <!-- ── Investment transaction ──────────────────────────── -->
-    <section class="module-panel">
-        <h2 style="display:flex;justify-content:space-between;align-items:center;">
-            Investment transaction
-            <button class="panel-toggle-btn" id="txn-form-toggle" onclick="toggleTxnForm()">
-                <span id="txn-form-toggle-label">Show</span>
-                <span class="arrow">&#9660;</span>
-            </button>
-        </h2>
-        <div class="panel-collapsible" id="txn-form-body">
+    <!-- ── Transaction modal ─────────────────────────────────── -->
+    <div class="inv-modal-overlay" id="txn-modal-overlay" onclick="closeTxnModal(event)">
+        <div class="inv-modal" role="dialog" aria-modal="true" aria-label="Add transaction">
+            <div class="inv-modal-header">
+                <span>Add Transaction</span>
+                <button type="button" class="inv-modal-close" onclick="closeTxnModal()">&times;</button>
+            </div>
             <form method="post" class="module-form" id="txn-form">
                 <input type="hidden" name="form" value="investment_transaction">
                 <label>
@@ -302,7 +340,7 @@ include __DIR__ . '/../partials/nav.php';
                 <button type="submit">Save transaction</button>
             </form>
         </div>
-    </section>
+    </div>
 
     <!-- ── Portfolio table ─────────────────────────────────── -->
     <section class="module-panel">
@@ -382,7 +420,10 @@ include __DIR__ . '/../partials/nav.php';
                                     <span class="dash">—</span>
                                 <?php endif; ?>
                             </td>
-                            <td><a class="secondary" href="?module=investments&edit=<?= (int) $inv['id'] ?>">Edit</a></td>
+                            <td style="white-space:nowrap;display:flex;gap:0.4rem;">
+                                <a class="secondary" href="?module=investments&edit=<?= (int) $inv['id'] ?>">Edit</a>
+                                <button type="button" class="secondary" style="font-size:0.72rem;padding:0.25rem 0.6rem;" onclick="openTxnModal(<?= (int) $inv['id'] ?>)">+ Txn</button>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -446,14 +487,30 @@ function toggleInvForm() {
     btn.classList.toggle('open', open);
     label.textContent = open ? 'Hide' : 'Show';
 }
-function toggleTxnForm() {
-    const body  = document.getElementById('txn-form-body');
-    const btn   = document.getElementById('txn-form-toggle');
-    const label = document.getElementById('txn-form-toggle-label');
-    const open  = body.classList.toggle('open');
-    btn.classList.toggle('open', open);
-    label.textContent = open ? 'Hide' : 'Show';
+
+// ── Transaction modal ─────────────────────────────────────────────────────
+function openTxnModal(preselect) {
+    const overlay = document.getElementById('txn-modal-overlay');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    if (preselect) {
+        const sel = document.getElementById('txn_investment_id');
+        if (sel) { sel.value = preselect; onTxnInvestmentChange(preselect); }
+    }
+    const first = overlay.querySelector('select,input:not([type=hidden])');
+    if (first) setTimeout(() => first.focus(), 50);
 }
+function closeTxnModal(e) {
+    if (e && e.target !== document.getElementById('txn-modal-overlay')) return;
+    document.getElementById('txn-modal-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.getElementById('txn-modal-overlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+});
 
 // ── Investment form: show/hide instrument vs plain-name fields ───────────
 const INSTRUMENT_TYPES = ['mutual_fund', 'equity', 'etf'];
