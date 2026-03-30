@@ -1,5 +1,18 @@
 <?php
 
+// TEMP DEBUG - remove after fix
+if (($_GET['debug'] ?? '') === 'finapp_debug_2026') {
+    session_start();
+    die(json_encode([
+        'session_id'   => session_id(),
+        'session_data' => $_SESSION,
+        'cookies'      => $_COOKIE,
+        'save_handler' => ini_get('session.save_handler'),
+        'save_path'    => session_save_path(),
+        'env_exists'   => file_exists(__DIR__ . '/.env'),
+    ], JSON_PRETTY_PRINT));
+}
+
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
@@ -28,18 +41,6 @@ try {
     error_log('[FinApp] DB session handler failed: ' . $e->getMessage());
 }
 session_start();
-
-// Temporary debug — remove after diagnosis
-if (($_GET['debug'] ?? '') === 'finapp_debug_2026') {
-    die(json_encode([
-        'session_id'      => session_id(),
-        'session_data'    => $_SESSION,
-        'cookies'         => $_COOKIE,
-        'save_handler'    => ini_get('session.save_handler'),
-        'session_path'    => session_save_path(),
-        'env_file_exists' => file_exists(__DIR__ . '/.env'),
-    ], JSON_PRETTY_PRINT));
-}
 
 use Controllers\AuthController;
 use Controllers\AccountController;
