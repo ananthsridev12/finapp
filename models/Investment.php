@@ -165,24 +165,30 @@ SQL;
 
     public function getSummary(): array
     {
+        // Aggregate per-investment first, then sum — avoids multiplying current_value
+        // by the number of transaction rows when the outer JOIN fans out.
         $sql = <<<SQL
 SELECT
-    COUNT(DISTINCT i.id) AS count,
-    COALESCE(SUM(CASE WHEN it.transaction_type = 'buy' THEN it.amount ELSE 0 END), 0) AS total_invested,
-    COALESCE(SUM(CASE WHEN it.transaction_type = 'sell' THEN it.amount ELSE 0 END), 0) AS total_redeemed,
-    COALESCE(SUM(
-        CASE WHEN it.transaction_type = 'buy' THEN it.units ELSE 0 END -
-        CASE WHEN it.transaction_type = 'sell' THEN it.units ELSE 0 END
-    ), 0) AS total_units,
-    COALESCE(SUM(
-        ins.current_price * (
-            COALESCE((SELECT SUM(CASE WHEN it2.transaction_type='buy' THEN it2.units ELSE -it2.units END) FROM investment_transactions it2 WHERE it2.investment_id = i.id), 0)
-        )
-    ), 0) AS current_value
-FROM investments i
-LEFT JOIN instruments ins ON ins.id = i.instrument_id
-LEFT JOIN investment_transactions it ON it.investment_id = i.id
-WHERE i.user_id = :user_id
+    COUNT(*)                          AS count,
+    COALESCE(SUM(total_invested), 0)  AS total_invested,
+    COALESCE(SUM(total_redeemed), 0)  AS total_redeemed,
+    COALESCE(SUM(current_value),  0)  AS current_value
+FROM (
+    SELECT
+        i.id,
+        COALESCE(SUM(CASE WHEN it.transaction_type = 'buy'  THEN it.amount ELSE 0 END), 0) AS total_invested,
+        COALESCE(SUM(CASE WHEN it.transaction_type = 'sell' THEN it.amount ELSE 0 END), 0) AS total_redeemed,
+        ins.current_price * COALESCE(
+            SUM(CASE WHEN it.transaction_type = 'buy'  THEN it.units
+                     WHEN it.transaction_type = 'sell' THEN -it.units
+                     ELSE 0 END), 0
+        ) AS current_value
+    FROM investments i
+    LEFT JOIN instruments ins ON ins.id = i.instrument_id
+    LEFT JOIN investment_transactions it ON it.investment_id = i.id
+    WHERE i.user_id = :user_id
+    GROUP BY i.id, ins.current_price
+) sub
 SQL;
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':user_id' => $this->userId]);
