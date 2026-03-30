@@ -67,14 +67,29 @@ function parseBhavZip(string $zip, string $dateStr, array &$priceMap): int {
         $csv = $za->getFromIndex(0);
         $za->close();
         $lines = explode("\n", $csv);
-        array_shift($lines);
+
+        // Read header to detect format
+        $headerLine = trim(array_shift($lines));
+        $headers    = str_getcsv($headerLine);
+        $headers    = array_map('trim', $headers);
+
+        // New NSE format: TckrSymb, ClsPric or PrvsClsg
+        // Old NSE format: SYMBOL (col 0), CLOSE (col 5)
+        $symCol   = array_search('TckrSymb', $headers);
+        $closeCol = array_search('ClsPric', $headers);
+        if ($closeCol === false) $closeCol = array_search('PrvsClsg', $headers);
+
+        // Fall back to old positional format
+        if ($symCol === false) { $symCol = 0; }
+        if ($closeCol === false) { $closeCol = 5; }
+
         foreach ($lines as $line) {
             $line = trim($line);
             if (!$line) continue;
             $cols = str_getcsv($line);
-            if (count($cols) < 6) continue;
-            $sym   = trim($cols[0]) . '.NS';
-            $close = (float) trim($cols[5]);
+            if (count($cols) <= max($symCol, $closeCol)) continue;
+            $sym   = trim($cols[$symCol]) . '.NS';
+            $close = (float) str_replace(',', '', trim($cols[$closeCol]));
             if ($close <= 0) continue;
             $priceMap[$sym] = ['price' => $close, 'date' => $dateStr];
             $count++;
