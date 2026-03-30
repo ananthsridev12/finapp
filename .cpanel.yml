@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home1/de2shrnx/fin.easi7.in
+    - export DEPLOYPATH=/home1/de2shrnx/invest.easi7.in
     - /bin/cp -r . $DEPLOYPATH
     - /bin/find $DEPLOYPATH -name ".git" -type d -exec /bin/rm -rf {} + 2>/dev/null || true
     - /bin/find $DEPLOYPATH -name ".env.example" -delete 2>/dev/null || true
