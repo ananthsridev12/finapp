@@ -29,6 +29,18 @@ try {
 }
 session_start();
 
+// Temporary debug — remove after diagnosis
+if (($_GET['debug'] ?? '') === 'finapp_debug_2026') {
+    die(json_encode([
+        'session_id'      => session_id(),
+        'session_data'    => $_SESSION,
+        'cookies'         => $_COOKIE,
+        'save_handler'    => ini_get('session.save_handler'),
+        'session_path'    => session_save_path(),
+        'env_file_exists' => file_exists(__DIR__ . '/.env'),
+    ], JSON_PRETTY_PRINT));
+}
+
 use Controllers\AuthController;
 use Controllers\AccountController;
 use Controllers\AnalyticsController;
