@@ -37,96 +37,98 @@ if ($raw) {
 // ── 2. Update Equity/ETF prices from NSE Bhavcopy ────────────────────────
 logMsg('Fetching Equity/ETF prices from NSE Bhavcopy...');
 
-// NSE bhavcopy URL for today — tries last 5 days in case of holiday/weekend
-$priceMap  = []; // symbol => ['price'=>, 'date'=>]
-$found     = false;
+function fetchWithCurl(string $url): string|false {
+    if (!function_exists('curl_init')) return false;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_HTTPHEADER     => [
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language: en-US,en;q=0.5',
+            'Referer: https://www.nseindia.com/',
+        ],
+    ]);
+    $data = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return ($code === 200 && $data) ? $data : false;
+}
 
-for ($daysBack = 0; $daysBack <= 5; $daysBack++) {
+function parseBhavZip(string $zip, string $dateStr, array &$priceMap): int {
+    $tmpZip = sys_get_temp_dir() . '/nse_bhav_' . uniqid() . '.zip';
+    file_put_contents($tmpZip, $zip);
+    $count = 0;
+    $za = new ZipArchive();
+    if ($za->open($tmpZip) === true) {
+        $csv = $za->getFromIndex(0);
+        $za->close();
+        $lines = explode("\n", $csv);
+        array_shift($lines);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (!$line) continue;
+            $cols = str_getcsv($line);
+            if (count($cols) < 6) continue;
+            $sym   = trim($cols[0]) . '.NS';
+            $close = (float) trim($cols[5]);
+            if ($close <= 0) continue;
+            $priceMap[$sym] = ['price' => $close, 'date' => $dateStr];
+            $count++;
+        }
+    }
+    @unlink($tmpZip);
+    return $count;
+}
+
+$priceMap = [];
+$found    = false;
+
+for ($daysBack = 0; $daysBack <= 6; $daysBack++) {
     $ts      = strtotime("-$daysBack days");
     $dd      = date('d', $ts);
     $mon     = strtoupper(date('M', $ts));
     $yyyy    = date('Y', $ts);
-    $dateStr = date('Y-m-d', $ts);
+    $yyyymmdd = date('Ymd', $ts);
+    $dateStr  = date('Y-m-d', $ts);
 
-    // Equity bhavcopy
-    $equityUrl = "https://archives.nseindia.com/content/historical/EQUITIES/{$yyyy}/{$mon}/cm{$dd}{$mon}{$yyyy}bhav.csv.zip";
-    $ctx = stream_context_create(['http' => [
-        'timeout' => 30,
-        'header'  => "User-Agent: Mozilla/5.0\r\nReferer: https://www.nseindia.com/\r\n",
-    ]]);
-    $zip = @file_get_contents($equityUrl, false, $ctx);
+    // Try new NSE archives URL first, then old format
+    $urls = [
+        "https://nsearchives.nseindia.com/content/cm/BhavCopy_NSE_CM_0_0_0_{$yyyymmdd}_F_0000.csv.zip",
+        "https://archives.nseindia.com/content/historical/EQUITIES/{$yyyy}/{$mon}/cm{$dd}{$mon}{$yyyy}bhav.csv.zip",
+    ];
 
-    if ($zip) {
-        // Save zip to temp, extract CSV
-        $tmpZip = sys_get_temp_dir() . '/nse_bhav.zip';
-        file_put_contents($tmpZip, $zip);
-        $za = new ZipArchive();
-        if ($za->open($tmpZip) === true) {
-            $csv = $za->getFromIndex(0);
-            $za->close();
-            $lines = explode("\n", $csv);
-            array_shift($lines); // skip header: SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,...,ISIN
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if (!$line) continue;
-                $cols = str_getcsv($line);
-                if (count($cols) < 6) continue;
-                $sym   = trim($cols[0]) . '.NS';
-                $close = (float) trim($cols[5]);
-                if ($close <= 0) continue;
-                $priceMap[$sym] = ['price' => $close, 'date' => $dateStr];
-            }
-            logMsg("Parsed equity bhavcopy for $dateStr (" . count($priceMap) . " symbols).");
+    foreach ($urls as $url) {
+        $zip = fetchWithCurl($url);
+        if ($zip) {
+            $count = parseBhavZip($zip, $dateStr, $priceMap);
+            logMsg("Parsed equity bhavcopy for $dateStr ($count symbols) from $url");
             $found = true;
+            break 2;
         }
-        @unlink($tmpZip);
-        break;
     }
 }
 
 if (!$found) {
-    logMsg('ERROR: Could not fetch NSE equity bhavcopy for last 5 days.');
+    logMsg('ERROR: Could not fetch NSE equity bhavcopy for last 6 days.');
 }
 
 // ETF bhavcopy
-for ($daysBack = 0; $daysBack <= 5; $daysBack++) {
-    $ts   = strtotime("-$daysBack days");
-    $dd   = date('d', $ts);
-    $mon  = strtoupper(date('M', $ts));
-    $yyyy = date('Y', $ts);
-    $dateStr = date('Y-m-d', $ts);
+for ($daysBack = 0; $daysBack <= 6; $daysBack++) {
+    $ts       = strtotime("-$daysBack days");
+    $dd       = date('d', $ts);
+    $mon      = strtoupper(date('M', $ts));
+    $yyyy     = date('Y', $ts);
+    $dateStr  = date('Y-m-d', $ts);
 
     $etfUrl = "https://archives.nseindia.com/content/historical/ETF/{$yyyy}/{$mon}/cm{$dd}{$mon}{$yyyy}bhav.csv.zip";
-    $ctx = stream_context_create(['http' => [
-        'timeout' => 30,
-        'header'  => "User-Agent: Mozilla/5.0\r\nReferer: https://www.nseindia.com/\r\n",
-    ]]);
-    $zip = @file_get_contents($etfUrl, false, $ctx);
-
+    $zip = fetchWithCurl($etfUrl);
     if ($zip) {
-        $tmpZip = sys_get_temp_dir() . '/nse_etf_bhav.zip';
-        file_put_contents($tmpZip, $zip);
-        $za = new ZipArchive();
-        if ($za->open($tmpZip) === true) {
-            $csv = $za->getFromIndex(0);
-            $za->close();
-            $lines = explode("\n", $csv);
-            array_shift($lines);
-            $etfCount = 0;
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if (!$line) continue;
-                $cols = str_getcsv($line);
-                if (count($cols) < 6) continue;
-                $sym   = trim($cols[0]) . '.NS';
-                $close = (float) trim($cols[5]);
-                if ($close <= 0) continue;
-                $priceMap[$sym] = ['price' => $close, 'date' => $dateStr];
-                $etfCount++;
-            }
-            logMsg("Parsed ETF bhavcopy for $dateStr ($etfCount ETFs).");
-        }
-        @unlink($tmpZip);
+        $count = parseBhavZip($zip, $dateStr, $priceMap);
+        logMsg("Parsed ETF bhavcopy for $dateStr ($count ETFs).");
         break;
     }
 }
