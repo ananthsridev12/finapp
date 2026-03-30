@@ -27,3 +27,8 @@ ALTER TABLE `investments`
     ADD CONSTRAINT `fk_investments_instrument` FOREIGN KEY (`instrument_id`) REFERENCES `instruments`(`id`) ON DELETE SET NULL;
 
 CREATE INDEX `idx_investments_instrument` ON `investments`(`instrument_id`);
+
+-- Fix: remove unique constraint on isin (MF plans share same ISIN)
+-- Keep scheme_code unique for MF, symbol unique for equity/ETF
+ALTER TABLE `instruments` DROP INDEX `uq_isin`;
+ALTER TABLE `instruments` ADD INDEX `idx_isin` (`isin`);

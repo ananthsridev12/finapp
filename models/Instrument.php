@@ -91,11 +91,13 @@ class Instrument extends BaseModel
 
     public function upsertEquityETF(string $symbol, string $name, string $isin, string $type): void
     {
+        // ON DUPLICATE KEY on uq_scheme_code won't fire for equity; uses uq_symbol unique key
         $stmt = $this->db->prepare(
             'INSERT INTO instruments (type, name, isin, symbol)
              VALUES (:type, :name, :isin, :symbol)
              ON DUPLICATE KEY UPDATE
                 name = VALUES(name),
+                isin = VALUES(isin),
                 type = VALUES(type)'
         );
         $stmt->execute([
