@@ -15,10 +15,14 @@ require_once __DIR__ . '/autoload.php';
 use Config\Database;
 use Config\DbSessionHandler;
 
-$sessionHandler = new DbSessionHandler(new Database());
-session_set_save_handler($sessionHandler, true);
-ini_set('session.gc_maxlifetime', 86400); // 24 hours
-session_set_cookie_params(86400);         // cookie also lasts 24 hours
+ini_set('session.gc_maxlifetime', 86400);
+session_set_cookie_params(86400);
+try {
+    $sessionHandler = new DbSessionHandler(new Database());
+    session_set_save_handler($sessionHandler, true);
+} catch (\Throwable $e) {
+    error_log('[FinApp] DB session handler failed: ' . $e->getMessage());
+}
 session_start();
 
 use Controllers\AuthController;
