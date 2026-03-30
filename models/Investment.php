@@ -8,22 +8,41 @@ class Investment extends BaseModel
 {
     public function getAll(): array
     {
-        $stmt = $this->db->prepare('SELECT * FROM investments WHERE user_id = :user_id ORDER BY created_at DESC');
+        $sql = <<<SQL
+SELECT
+    i.*,
+    ins.current_price,
+    ins.price_date,
+    ins.isin,
+    ins.scheme_code,
+    ins.symbol,
+    COALESCE(SUM(CASE WHEN it.transaction_type = 'buy' THEN it.units ELSE 0 END) -
+             SUM(CASE WHEN it.transaction_type = 'sell' THEN it.units ELSE 0 END), 0) AS total_units,
+    COALESCE(SUM(CASE WHEN it.transaction_type = 'buy' THEN it.amount ELSE 0 END), 0) AS total_invested,
+    COALESCE(SUM(CASE WHEN it.transaction_type = 'sell' THEN it.amount ELSE 0 END), 0) AS total_redeemed
+FROM investments i
+LEFT JOIN instruments ins ON ins.id = i.instrument_id
+LEFT JOIN investment_transactions it ON it.investment_id = i.id
+WHERE i.user_id = :user_id
+GROUP BY i.id, ins.current_price, ins.price_date, ins.isin, ins.scheme_code, ins.symbol
+ORDER BY i.created_at DESC
+SQL;
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([':user_id' => $this->userId]);
-
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function create(array $input): bool
     {
-        $sql  = 'INSERT INTO investments (user_id, type, name, notes) VALUES (:user_id, :type, :name, :notes)';
+        $sql  = 'INSERT INTO investments (user_id, instrument_id, type, name, notes) VALUES (:user_id, :instrument_id, :type, :name, :notes)';
         $stmt = $this->db->prepare($sql);
 
         return $stmt->execute([
-            ':user_id' => $this->userId,
-            ':type'    => $input['type'] ?? 'mutual_fund',
-            ':name'    => trim($input['name'] ?? 'Untitled'),
-            ':notes'   => $input['notes'] ?? null,
+            ':user_id'       => $this->userId,
+            ':instrument_id' => !empty($input['instrument_id']) ? (int) $input['instrument_id'] : null,
+            ':type'          => $input['type'] ?? 'other',
+            ':name'          => $input['name'] ?? '',
+            ':notes'         => $input['notes'] ?? null,
         ]);
     }
 

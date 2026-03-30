@@ -19,6 +19,16 @@ class InvestmentController extends BaseController
 
     public function index(): string
     {
+        // AJAX instrument search
+        if (($_GET['action'] ?? '') === 'search_instrument') {
+            header('Content-Type: application/json');
+            $query           = trim((string) ($_GET['q'] ?? ''));
+            $type            = trim((string) ($_GET['type'] ?? ''));
+            $instrumentModel = new \Models\Instrument($this->database);
+            echo json_encode($instrumentModel->search($query, $type));
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (($_POST['form'] ?? '') === 'investment') {
                 $this->investmentModel->create($_POST);
