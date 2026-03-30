@@ -35,7 +35,7 @@ class AuthController
                         'name'  => $user['name'],
                         'email' => $user['email'],
                     ];
-                    header('Location: ?module=dashboard');
+                    header('Location: ' . $this->baseUrl() . '?module=dashboard');
                     exit;
                 }
                 $error = 'Invalid email or password.';
@@ -78,7 +78,7 @@ class AuthController
                         'name'  => $user['name'] ?? $name,
                         'email' => $user['email'] ?? $email,
                     ];
-                    header('Location: ?module=dashboard');
+                    header('Location: ' . $this->baseUrl() . '?module=dashboard');
                     exit;
                 }
                 $error = 'Registration failed. Please try again.';
@@ -99,7 +99,15 @@ class AuthController
                 $p['path'], $p['domain'], $p['secure'], $p['httponly']);
         }
         session_destroy();
-        header('Location: ?module=login');
+        header('Location: ' . $this->baseUrl() . '?module=login');
         exit;
+    }
+
+    private function baseUrl(): string
+    {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $script = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
+        return $scheme . '://' . $host . $script;
     }
 }

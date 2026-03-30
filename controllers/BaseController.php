@@ -19,7 +19,10 @@ class BaseController
     protected function requireAuth(): void
     {
         if (empty($_SESSION['user_id'])) {
-            header('Location: ?module=login');
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $script = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
+            header('Location: ' . $scheme . '://' . $host . $script . '?module=login');
             exit;
         }
         $this->userId      = (int) $_SESSION['user_id'];

@@ -18,10 +18,12 @@ class DbSessionHandler implements \SessionHandlerInterface
     {
         $this->db->exec(
             'CREATE TABLE IF NOT EXISTS `sessions` (
-                `id`         VARCHAR(128) NOT NULL PRIMARY KEY,
-                `data`       MEDIUMTEXT   NOT NULL,
-                `expires_at` DATETIME     NOT NULL,
-                INDEX `idx_sessions_expires` (`expires_at`)
+                `id`         VARCHAR(128)      NOT NULL PRIMARY KEY,
+                `user_id`    INT UNSIGNED      NULL DEFAULT NULL,
+                `data`       MEDIUMTEXT        NOT NULL,
+                `expires_at` DATETIME          NOT NULL,
+                INDEX `idx_sessions_expires` (`expires_at`),
+                INDEX `idx_sessions_user` (`user_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
         );
     }
@@ -42,15 +44,24 @@ class DbSessionHandler implements \SessionHandlerInterface
     public function write(string $id, string $data): bool
     {
         $lifetime = (int) ini_get('session.gc_maxlifetime') ?: 86400;
+
+        // Extract user_id from serialized session data
+        $userId = null;
+        if (preg_match('/user_id\|i:(\d+);/', $data, $m)) {
+            $userId = (int) $m[1];
+        }
+
         $stmt = $this->db->prepare(
-            'INSERT INTO sessions (id, data, expires_at)
-             VALUES (:id, :data, DATE_ADD(NOW(), INTERVAL :lifetime SECOND))
+            'INSERT INTO sessions (id, user_id, data, expires_at)
+             VALUES (:id, :user_id, :data, DATE_ADD(NOW(), INTERVAL :lifetime SECOND))
              ON DUPLICATE KEY UPDATE
-                data = VALUES(data),
+                user_id    = VALUES(user_id),
+                data       = VALUES(data),
                 expires_at = VALUES(expires_at)'
         );
         return $stmt->execute([
             ':id'       => $id,
+            ':user_id'  => $userId,
             ':data'     => $data,
             ':lifetime' => $lifetime,
         ]);
