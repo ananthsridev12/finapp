@@ -4,11 +4,6 @@ DirectoryIndex index.php
 <IfModule mod_rewrite.c>
 RewriteEngine On
 
-# Force HTTPS (handles direct and proxy/load-balancer setups)
-RewriteCond %{HTTPS} off
-RewriteCond %{HTTP:X-Forwarded-Proto} !https
-RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-
 # Let API requests stay inside /api/.htaccess
 RewriteCond %{REQUEST_URI} !^/api/ [NC]
 
