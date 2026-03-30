@@ -109,7 +109,7 @@ CREATE TABLE lending_records (
 -- Investments and their transactions without ever overwriting history.
 CREATE TABLE investments (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    type ENUM('mutual_fund','equity','fd','rd','other') NOT NULL,
+    type ENUM('mutual_fund','equity','etf','fd','rd','other') NOT NULL,
     name VARCHAR(150) NOT NULL,
     notes TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

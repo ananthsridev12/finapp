@@ -165,12 +165,33 @@ SQL;
 
     public function getSummary(): array
     {
-        $stmt = $this->db->prepare('SELECT COUNT(*) AS total_investments FROM investments WHERE user_id = :user_id');
+        $sql = <<<SQL
+SELECT
+    COUNT(DISTINCT i.id) AS count,
+    COALESCE(SUM(CASE WHEN it.transaction_type = 'buy' THEN it.amount ELSE 0 END), 0) AS total_invested,
+    COALESCE(SUM(CASE WHEN it.transaction_type = 'sell' THEN it.amount ELSE 0 END), 0) AS total_redeemed,
+    COALESCE(SUM(
+        CASE WHEN it.transaction_type = 'buy' THEN it.units ELSE 0 END -
+        CASE WHEN it.transaction_type = 'sell' THEN it.units ELSE 0 END
+    ), 0) AS total_units,
+    COALESCE(SUM(
+        ins.current_price * (
+            COALESCE((SELECT SUM(CASE WHEN it2.transaction_type='buy' THEN it2.units ELSE -it2.units END) FROM investment_transactions it2 WHERE it2.investment_id = i.id), 0)
+        )
+    ), 0) AS current_value
+FROM investments i
+LEFT JOIN instruments ins ON ins.id = i.instrument_id
+LEFT JOIN investment_transactions it ON it.investment_id = i.id
+WHERE i.user_id = :user_id
+SQL;
+        $stmt = $this->db->prepare($sql);
         $stmt->execute([':user_id' => $this->userId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         return [
-            'count' => (int) $row['total_investments'],
+            'count'           => (int)   ($row['count'] ?? 0),
+            'total_invested'  => (float) ($row['total_invested'] ?? 0),
+            'total_redeemed'  => (float) ($row['total_redeemed'] ?? 0),
+            'current_value'   => (float) ($row['current_value'] ?? 0),
         ];
     }
 
@@ -188,13 +209,16 @@ SQL;
         if ($id <= 0) return false;
         $name = trim((string) ($input['name'] ?? ''));
         if ($name === '') return false;
-        $stmt = $this->db->prepare('UPDATE investments SET type=:type, name=:name, notes=:notes WHERE id=:id AND user_id=:user_id');
+        $stmt = $this->db->prepare(
+            'UPDATE investments SET type=:type, instrument_id=:instrument_id, name=:name, notes=:notes WHERE id=:id AND user_id=:user_id'
+        );
         return $stmt->execute([
-            ':type'    => $input['type'] ?? 'mutual_fund',
-            ':name'    => $name,
-            ':notes'   => $input['notes'] ?? null,
-            ':id'      => $id,
-            ':user_id' => $this->userId,
+            ':type'          => $input['type'] ?? 'mutual_fund',
+            ':instrument_id' => !empty($input['instrument_id']) ? (int)$input['instrument_id'] : null,
+            ':name'          => $name,
+            ':notes'         => $input['notes'] ?? null,
+            ':id'            => $id,
+            ':user_id'       => $this->userId,
         ]);
     }
 }

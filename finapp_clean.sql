@@ -323,7 +323,7 @@ CREATE TABLE `credit_card_rewards` (
 DROP TABLE IF EXISTS `investments`;
 CREATE TABLE `investments` (
   `id` int(10) UNSIGNED NOT NULL,
-  `type` enum('mutual_fund','equity','fd','rd','other') NOT NULL,
+  `type` enum('mutual_fund','equity','etf','fd','rd','other') NOT NULL,
   `name` varchar(150) NOT NULL,
   `notes` text,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
