@@ -486,7 +486,8 @@ function onInvTypeChange(type) {
 })();
 
 // ── Instrument search / autocomplete ────────────────────────────────────
-let searchTimer = null;
+let searchTimer  = null;
+let searchAbort  = null;
 
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('instrument_search');
@@ -497,7 +498,7 @@ document.addEventListener('DOMContentLoaded', function () {
         clearTimeout(searchTimer);
         const q = this.value.trim();
         if (q.length < 2) { closeDropdown(); return; }
-        searchTimer = setTimeout(() => doSearch(q), 300);
+        searchTimer = setTimeout(() => doSearch(q), 350);
     });
 
     document.addEventListener('click', function (e) {
@@ -508,13 +509,17 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function doSearch(q) {
+    // Abort any in-flight request before firing a new one
+    if (searchAbort) { searchAbort.abort(); }
+    searchAbort = new AbortController();
+
     const typeSelect = document.getElementById('inv-type-select');
     const type       = typeSelect ? typeSelect.value : '';
     const url        = '?module=investments&action=search_instrument&q=' + encodeURIComponent(q) + '&type=' + encodeURIComponent(type);
-    fetch(url)
+    fetch(url, { signal: searchAbort.signal })
         .then(r => r.json())
         .then(data => renderDropdown(data))
-        .catch(() => closeDropdown());
+        .catch(err => { if (err.name !== 'AbortError') closeDropdown(); });
 }
 
 function renderDropdown(items) {
