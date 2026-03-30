@@ -79,12 +79,13 @@ class Instrument extends BaseModel
                 price_date        = VALUES(price_date),
                 price_updated_at  = NOW()'
         );
+        $isinVal = (trim($isin) !== '') ? trim($isin) : null;
         $stmt->execute([
             ':name'        => $name,
-            ':isin'        => $isin ?: null,
+            ':isin'        => $isinVal,
             ':scheme_code' => $schemeCode,
-            ':price'       => $nav,
-            ':price_date'  => $priceDate,
+            ':price'       => $nav > 0 ? $nav : null,
+            ':price_date'  => $nav > 0 ? $priceDate : null,
         ]);
     }
 

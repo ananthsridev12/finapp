@@ -60,26 +60,32 @@ if ($raw) {
     logMsg('ERROR: Failed to fetch NSE ETF list.');
 }
 
-// ── 3. Sync Mutual Funds from AMFI ────────────────────────────────────────
-logMsg('Syncing MF instrument list from AMFI...');
-$amfiUrl = 'https://api.mfapi.in/mf';
-$ctx2    = stream_context_create(['http' => ['timeout' => 30]]);
-$response = @file_get_contents($amfiUrl, false, $ctx2);
+// ── 3. Sync Mutual Funds from AMFI NAV file ───────────────────────────────
+logMsg('Syncing MF instrument list from AMFI NAV file...');
+$amfiUrl = 'https://www.amfiindia.com/spages/NAVAll.txt';
+$ctx2    = stream_context_create(['http' => ['timeout' => 60, 'header' => "User-Agent: Mozilla/5.0\r\n"]]);
+$raw     = @file_get_contents($amfiUrl, false, $ctx2);
 
-if ($response) {
-    $funds = json_decode($response, true) ?? [];
+if ($raw) {
+    $lines = explode("\n", $raw);
     $count = 0;
-    foreach ($funds as $fund) {
-        $schemeCode = (string) ($fund['schemeCode'] ?? '');
-        $name       = trim($fund['schemeName'] ?? '');
-        if (!$schemeCode || !$name) continue;
-        // upsertMF with 0 price — price will be updated by update_prices.php
-        $instrument->upsertMF($schemeCode, $name, '', 0, date('Y-m-d'));
+    foreach ($lines as $line) {
+        $line  = trim($line);
+        $parts = explode(';', $line);
+        if (count($parts) < 6) continue;
+        [$schemeCode, $isinDiv, $isinGrowth, $name, $nav, $date] = $parts;
+        $schemeCode = trim($schemeCode);
+        $name       = trim($name);
+        if (!is_numeric($schemeCode) || $name === '') continue;
+        $isin = trim($isinGrowth) ?: trim($isinDiv);
+        $navVal    = is_numeric(trim($nav)) ? (float)trim($nav) : 0;
+        $priceDate = $navVal > 0 ? (date('Y-m-d', strtotime(trim($date))) ?: date('Y-m-d')) : date('Y-m-d');
+        $instrument->upsertMF($schemeCode, $name, $isin, $navVal, $priceDate);
         $count++;
     }
     logMsg("Synced $count MF instruments.");
 } else {
-    logMsg('ERROR: Failed to fetch AMFI MF list.');
+    logMsg('ERROR: Failed to fetch AMFI NAV file.');
 }
 
 logMsg('Instrument sync complete.');
