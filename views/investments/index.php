@@ -459,18 +459,22 @@ function toggleTxnForm() {
 const INSTRUMENT_TYPES = ['mutual_fund', 'equity', 'etf'];
 
 function onInvTypeChange(type) {
-    const iFields = document.getElementById('inv-instrument-fields');
-    const pFields = document.getElementById('inv-plain-name-fields');
+    const iFields   = document.getElementById('inv-instrument-fields');
+    const pFields   = document.getElementById('inv-plain-name-fields');
+    const plainInput = document.getElementById('plain_name_input');
+    const nameHidden = document.getElementById('instrument_name_hidden');
     if (INSTRUMENT_TYPES.includes(type)) {
         iFields.classList.add('visible');
         pFields.classList.remove('visible');
-        // The hidden input carries the name for instrument types — plain name not needed
-        document.getElementById('plain_name_input').removeAttribute('required');
+        plainInput.removeAttribute('required');
+        plainInput.disabled  = true;   // excluded from form submit
+        nameHidden.disabled  = false;
     } else {
         iFields.classList.remove('visible');
         pFields.classList.add('visible');
-        document.getElementById('plain_name_input').setAttribute('required', 'required');
-        // Clear any instrument selection
+        plainInput.setAttribute('required', 'required');
+        plainInput.disabled  = false;
+        nameHidden.disabled  = true;   // excluded from form submit
         clearInstrument();
     }
 }
