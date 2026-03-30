@@ -32,6 +32,11 @@ Header always set Pragma "no-cache"
 # Disable LiteSpeed Cache for this app
 <IfModule LiteSpeed>
 CacheDisable public /
+RewriteRule .* - [E=cache-control:no-cache]
+</IfModule>
+
+<IfModule mod_headers.c>
+Header always set X-LiteSpeed-Cache-Control "no-cache"
 </IfModule>
 
 # Block direct access to sensitive files.
