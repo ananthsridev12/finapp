@@ -25,8 +25,11 @@ class Instrument extends BaseModel
 
         // Use FULLTEXT search for longer queries, LIKE for short ones
         if (strlen($query) >= 3) {
+            // Prefix each word with + so ALL words must be present (AND behaviour)
+            $words = preg_split('/\s+/', $query);
+            $boolQuery = implode(' ', array_map(fn($w) => '+' . $w . '*', $words));
             $where[]          = 'MATCH(name) AGAINST(:query IN BOOLEAN MODE)';
-            $params[':query']  = $query . '*';
+            $params[':query']  = $boolQuery;
         } else {
             $where[]          = 'name LIKE :query';
             $params[':query']  = $query . '%';
