@@ -13,9 +13,9 @@ if (file_exists($envFile)) {
 require_once __DIR__ . '/autoload.php';
 
 use Config\Database;
-use Config\SessionHandler;
+use Config\DbSessionHandler;
 
-$sessionHandler = new SessionHandler(new Database());
+$sessionHandler = new DbSessionHandler(new Database());
 session_set_save_handler($sessionHandler, true);
 ini_set('session.gc_maxlifetime', 86400); // 24 hours
 session_set_cookie_params(86400);         // cookie also lasts 24 hours

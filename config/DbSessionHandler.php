@@ -4,13 +4,26 @@ namespace Config;
 
 use PDO;
 
-class SessionHandler implements \SessionHandlerInterface
+class DbSessionHandler implements \SessionHandlerInterface
 {
     private PDO $db;
 
     public function __construct(Database $database)
     {
         $this->db = $database->connect();
+        $this->ensureTable();
+    }
+
+    private function ensureTable(): void
+    {
+        $this->db->exec(
+            'CREATE TABLE IF NOT EXISTS `sessions` (
+                `id`         VARCHAR(128) NOT NULL PRIMARY KEY,
+                `data`       MEDIUMTEXT   NOT NULL,
+                `expires_at` DATETIME     NOT NULL,
+                INDEX `idx_sessions_expires` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        );
     }
 
     public function open(string $path, string $name): bool { return true; }
@@ -28,6 +41,7 @@ class SessionHandler implements \SessionHandlerInterface
 
     public function write(string $id, string $data): bool
     {
+        $lifetime = (int) ini_get('session.gc_maxlifetime') ?: 86400;
         $stmt = $this->db->prepare(
             'INSERT INTO sessions (id, data, expires_at)
              VALUES (:id, :data, DATE_ADD(NOW(), INTERVAL :lifetime SECOND))
@@ -38,7 +52,7 @@ class SessionHandler implements \SessionHandlerInterface
         return $stmt->execute([
             ':id'       => $id,
             ':data'     => $data,
-            ':lifetime' => (int) ini_get('session.gc_maxlifetime') ?: 1440,
+            ':lifetime' => $lifetime,
         ]);
     }
 
