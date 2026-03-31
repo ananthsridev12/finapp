@@ -16,12 +16,9 @@ $editTransaction = $editTransaction ?? null;
 include __DIR__ . '/../partials/nav.php';
 ?>
 <main class="module-content">
-    <header class="module-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
-        <div>
-            <h1>Transactions</h1>
-            <p>Every money movement hits the master ledger with immutable history.</p>
-        </div>
-        <button onclick="openTxnModal()" style="margin-top:0.25rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:0.55rem 1.1rem;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">+ Add Transaction</button>
+    <header class="module-header">
+        <h1>Transactions</h1>
+        <p>Every money movement hits the master ledger with immutable history.</p>
     </header>
 
     <?php if ($imported !== null || $failed !== null): ?>
@@ -163,13 +160,14 @@ include __DIR__ . '/../partials/nav.php';
     <?php endif; ?>
 
     <!-- ── Add transaction modal ──────────────────────────────── -->
-    <div id="txn-modal-overlay" onclick="closeTxnModal(event)" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);backdrop-filter:blur(3px);align-items:flex-start;justify-content:center;padding:1.5rem 1rem;overflow-y:auto;">
-        <div style="background:#0f1a2e;border:1px solid rgba(120,150,210,0.25);border-radius:14px;width:100%;max-width:620px;margin:auto;box-shadow:0 16px 48px rgba(0,0,0,0.6);" onclick="event.stopPropagation()">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem 0.75rem;border-bottom:1px solid rgba(120,150,210,0.15);">
-                <span style="font-weight:700;font-size:1rem;">Add Transaction</span>
-                <button type="button" onclick="closeTxnModal()" style="background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1;padding:0 0.25rem;">&times;</button>
+    <div id="txn-modal-overlay" class="modal-overlay" onclick="closeTxnModal(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span>Add Transaction</span>
+                <button type="button" class="modal-close" onclick="closeTxnModal()">&times;</button>
             </div>
-        <form method="post" class="module-form" style="padding:1.25rem">
+            <div class="modal-body">
+        <form method="post" class="module-form">
             <input type="hidden" name="form" value="transaction">
             <label>
                 Date
@@ -625,8 +623,9 @@ include __DIR__ . '/../partials/nav.php';
             </label>
             <button type="submit">Record transaction</button>
         </form>
-        </div>
-    </div>
+            </div><!-- modal-body -->
+        </div><!-- modal-box -->
+    </div><!-- modal-overlay -->
 
     <section class="module-panel">
         <h2>Redeem credit card points</h2>
@@ -1138,21 +1137,24 @@ include __DIR__ . '/../partials/nav.php';
         // ── Transaction modal ────────────────────────────────────────────
         function openTxnModal() {
             const overlay = document.getElementById('txn-modal-overlay');
-            overlay.style.display = 'flex';
+            overlay.classList.add('open');
             document.body.style.overflow = 'hidden';
             const first = overlay.querySelector('input[type="date"]');
             if (first) setTimeout(() => first.focus(), 50);
         }
         function closeTxnModal(e) {
             if (e && e.target !== document.getElementById('txn-modal-overlay')) return;
-            document.getElementById('txn-modal-overlay').style.display = 'none';
+            document.getElementById('txn-modal-overlay').classList.remove('open');
             document.body.style.overflow = '';
         }
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                document.getElementById('txn-modal-overlay').style.display = 'none';
+                document.getElementById('txn-modal-overlay').classList.remove('open');
                 document.body.style.overflow = '';
             }
         });
+        <?php if (!empty($_GET['add'])): ?>
+        openTxnModal();
+        <?php endif; ?>
     </script>
 </main>

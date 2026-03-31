@@ -115,6 +115,49 @@ body {
     background: linear-gradient(135deg, rgba(59,130,246,0.35), rgba(34,211,238,0.2));
     border-color: rgba(59,130,246,0.4);
 }
+.nav-add-btn {
+    display: block; margin: 0.5rem 0.75rem 0.25rem;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    color: #fff !important; font-weight: 700 !important; font-size: 0.85rem !important;
+    border-radius: var(--radius-sm); padding: 0.62rem 0.85rem !important;
+    text-align: center; text-decoration: none; border: none !important;
+    transition: opacity 0.15s;
+}
+.nav-add-btn:hover { opacity: 0.88; color: #fff !important; background: linear-gradient(135deg, #3b82f6, #06b6d4) !important; }
+
+/* ── Global modal ──────────────────────────────────────────── */
+.modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 600;
+    background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+    justify-content: center; align-items: flex-start;
+    padding: 2rem 1rem;
+    overflow-y: auto;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+    background: #0f1a2e; border: 1px solid rgba(120,150,210,0.25);
+    border-radius: 14px; width: 100%; max-width: 600px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    margin: auto;
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 1.25rem; border-bottom: 1px solid rgba(120,150,210,0.15);
+    font-weight: 700; font-size: 1rem; color: #fff;
+    position: sticky; top: 0; background: #0f1a2e; border-radius: 14px 14px 0 0; z-index: 1;
+}
+.modal-close {
+    background: none; border: none; color: var(--muted);
+    font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0 0.3rem;
+    transition: color 0.15s;
+}
+.modal-close:hover { color: #fff; }
+.modal-body { padding: 1.25rem; }
+@media (max-width: 600px) {
+    .modal-overlay { padding: 0; align-items: flex-end; }
+    .modal-box { border-radius: 14px 14px 0 0; max-height: 92vh; overflow-y: auto; }
+    .modal-header { border-radius: 14px 14px 0 0; }
+}
 
 /* Layout */
 main { margin-left: var(--sidebar-width); padding: 2rem clamp(1rem, 3vw, 2.5rem); }
